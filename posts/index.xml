@@ -10,13 +10,77 @@
         <atom:link href="https://amuraru.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
         
         <item>
-            <title>Firsty</title>
-            <link>https://amuraru.github.io/posts/my-first-post/</link>
+            <title>Spark RDD Shuffle internals</title>
+            <link>https://amuraru.github.io/posts/spark-shuffle-internals/</link>
             <pubDate>Fri, 24 May 2019 23:45:10 +0300</pubDate>
             
-            <guid>https://amuraru.github.io/posts/my-first-post/</guid>
-            <description>Lorem Ipsum</description>
-            <content type="html"><![CDATA[<p>Lorem Ipsum</p>
+            <guid>https://amuraru.github.io/posts/spark-shuffle-internals/</guid>
+            <description>group-by is using an aggregator to combineValuesByKey At the DAG level configuration: See PairRDDFunctions.scala#L503-L505
+val createCombiner = (v: V) =&amp;gt; CompactBuffer(v) val mergeValue = (buf: CompactBuffer[V], v: V) =&amp;gt; buf += v val mergeCombiners = (c1: CompactBuffer[V], c2: CompactBuffer[V]) =&amp;gt; c1 ++= c2  which eventually calls: PairRDDFunctions.combineByKeyWithClassTag
+val aggregator = new Aggregator[K, V, C]( self.context.clean(createCombiner), self.context.clean(mergeValue), self.context.clean(mergeCombiners))  which in turn, boils down to:
+new ShuffledRDD[K, V, C](self, partitioner) .</description>
+            <content type="html"><![CDATA[
+
+<h2 id="group-by-is-using-an-aggregator-to-combinevaluesbykey">group-by is using an aggregator to combineValuesByKey</h2>
+
+<h3 id="at-the-dag-level-configuration">At the DAG level configuration:</h3>
+
+<p>See <a href="https://github.com/apache/spark/blob/5fae8f7b1d26fca3cbf663e46ca0da6d76c690da/core/src/main/scala/org/apache/spark/rdd/PairRDDFunctions.scala#L503-L505">PairRDDFunctions.scala#L503-L505</a></p>
+
+<pre><code class="language-java">    val createCombiner = (v: V) =&gt; CompactBuffer(v)
+    val mergeValue = (buf: CompactBuffer[V], v: V) =&gt; buf += v
+    val mergeCombiners = (c1: CompactBuffer[V], c2: CompactBuffer[V]) =&gt; c1 ++= c2
+</code></pre>
+
+<p>which eventually calls:
+PairRDDFunctions.combineByKeyWithClassTag</p>
+
+<pre><code class="language-java">val aggregator = new Aggregator[K, V, C](
+      self.context.clean(createCombiner),
+      self.context.clean(mergeValue),
+      self.context.clean(mergeCombiners))
+</code></pre>
+
+<p>which in turn, boils down to:</p>
+
+<pre><code class="language-java">new ShuffledRDD[K, V, C](self, partitioner)
+        .setSerializer(serializer)
+        .setAggregator(aggregator)
+        .setMapSideCombine(mapSideCombine)
+</code></pre>
+
+<hr />
+
+<h4 id="reduce-side">Reduce side</h4>
+
+<p>On the reduce side, when the DAG is actually materialized:</p>
+
+<p><code>ShuffledRDD#compute</code> is the actual RDD implm for a shuffled RDD.</p>
+
+<p>This in turn uses <code>BlockStoreShuffleReader#read</code> which has the following important points:</p>
+
+<ol>
+<li>Read the shuffle blocks from mappers (network via Netty or local): <code>ShuffleBlockFetcherIterator</code></li>
+<li>Deserialize: <code>recordIter</code></li>
+
+<li><p>Aggregate the (K,V)s by key:  <code>aggregatedIter</code>  <code>aggregator#combineValuesByKey</code></p>
+
+<pre><code>val combiners = new ExternalAppendOnlyMap[K, V, C]
+(createCombiner, mergeValue, mergeCombiners)
+</code></pre>
+
+<p>ExternalAppendOnlyMap will accumulate in memory the (K,agg(V)) till spill limit is hit, then spills (keep a reference to an on-disk partial sorted iterator)</p></li>
+
+<li><p>The final <code>resultIter</code> is actually provided by <code>ExternalSorter</code> which wraps the <code>aggregatedIter</code> and does the final merge sort of partial sorted results. See <code>ExternalSorter#merge</code><br />
+For <code>groupBy</code> the <code>aggregator.isDefined=false</code>, only <code>ordering.isDefined=true</code></p></li>
+</ol>
+
+<h2 id="references">References:</h2>
+
+<p>[1] ExternalAppendOnlyMap:
+<a href="https://github.com/JerryLead/SparkInternals/blob/master/markdown/english/4-shuffleDetails.md#externalappendonlymap">https://github.com/JerryLead/SparkInternals/blob/master/markdown/english/4-shuffleDetails.md#externalappendonlymap</a></p>
+
+<h2 id="repartitionandsortwithpartition-is-ligher">repartitionAndSortWithPartition is ligher(?)</h2>
 ]]></content>
         </item>
         

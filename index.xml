@@ -22,12 +22,15 @@
     </item>
     
     <item>
-      <title>Firsty</title>
-      <link>https://amuraru.github.io/posts/my-first-post/</link>
+      <title>Spark RDD Shuffle internals</title>
+      <link>https://amuraru.github.io/posts/spark-shuffle-internals/</link>
       <pubDate>Fri, 24 May 2019 23:45:10 +0300</pubDate>
       
-      <guid>https://amuraru.github.io/posts/my-first-post/</guid>
-      <description>Lorem Ipsum</description>
+      <guid>https://amuraru.github.io/posts/spark-shuffle-internals/</guid>
+      <description>group-by is using an aggregator to combineValuesByKey At the DAG level configuration: See PairRDDFunctions.scala#L503-L505
+val createCombiner = (v: V) =&amp;gt; CompactBuffer(v) val mergeValue = (buf: CompactBuffer[V], v: V) =&amp;gt; buf += v val mergeCombiners = (c1: CompactBuffer[V], c2: CompactBuffer[V]) =&amp;gt; c1 ++= c2  which eventually calls: PairRDDFunctions.combineByKeyWithClassTag
+val aggregator = new Aggregator[K, V, C]( self.context.clean(createCombiner), self.context.clean(mergeValue), self.context.clean(mergeCombiners))  which in turn, boils down to:
+new ShuffledRDD[K, V, C](self, partitioner) .</description>
     </item>
     
   </channel>
