@@ -1,0 +1,24 @@
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+    <channel>
+        <title>Posts on @amuraru</title>
+        <link>https://amuraru.github.io/posts/</link>
+        <description>Recent content in Posts on @amuraru</description>
+        <generator>Hugo -- gohugo.io</generator>
+        <language>en-us</language>
+        <copyright>amuraru</copyright>
+        <lastBuildDate>Fri, 24 May 2019 23:45:10 +0300</lastBuildDate>
+        <atom:link href="https://amuraru.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
+        
+        <item>
+            <title>Firsty</title>
+            <link>https://amuraru.github.io/posts/my-first-post/</link>
+            <pubDate>Fri, 24 May 2019 23:45:10 +0300</pubDate>
+            
+            <guid>https://amuraru.github.io/posts/my-first-post/</guid>
+            <description>Lorem Ipsum</description>
+            <content type="html"><![CDATA[<p>Lorem Ipsum</p>
+]]></content>
+        </item>
+        
+    </channel>
+</rss>
