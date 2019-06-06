@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="ie=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="author"
+    content="amuraru ">
+<meta name="description"
+    content="group-by is using an aggregator to combineValuesByKey At the DAG level configuration: See PairRDDFunctions.scala#L503-L505
+val createCombiner = (v: V) =&amp;gt; CompactBuffer(v) val mergeValue = (buf: CompactBuffer[V], v: V) =&amp;gt; buf &#43;= v val mergeCombiners = (c1: CompactBuffer[V], c2: CompactBuffer[V]) =&amp;gt; c1 &#43;&#43;= c2 which eventually calls: PairRDDFunctions.combineByKeyWithClassTag
+val aggregator = new Aggregator[K, V, C]( self.context.clean(createCombiner), self.context.clean(mergeValue), self.context.clean(mergeCombiners)) which in turn, boils down to:
+new ShuffledRDD[K, V, C](self, partitioner) .setSerializer(serializer) ." />
+<meta name="keywords" content="@amuraru, amuraru, homepage, blog, science, informatics, development, programming" />
+<meta name="robots" content="noodp" />
+<link rel="canonical" href="https://amuraru.github.io/posts/2019/05/spark-rdd-shuffle-internals/" />
+
+
+<title>
+    
+    Spark RDD Shuffle internals :: @amuraru  — @amuraru
+    
+</title>
+
+
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/3.2.1/css/flag-icon.min.css" rel="stylesheet"
+    type="text/css">
+
+
+
+<link rel="stylesheet" href="https://amuraru.github.io/main.min.175aa3a50e64fb4bc87dbc70eead7d5c204a82255bdb3fe76121eea95262604d.css">
+
+
+
+<link rel="apple-touch-icon" sizes="180x180" href="https://amuraru.github.io/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://amuraru.github.io/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="https://amuraru.github.io/favicon-16x16.png">
+<link rel="manifest" href="https://amuraru.github.io/site.webmanifest">
+<link rel="mask-icon" href="https://amuraru.github.io/safari-pinned-tab.svg" color="#252627">
+<link rel="shortcut icon" href="https://amuraru.github.io/favicon.ico">
+<meta name="theme-color" content="#252627">
+<meta itemprop="name" content="Spark RDD Shuffle internals">
+<meta itemprop="description" content="group-by is using an aggregator to combineValuesByKey At the DAG level configuration: See PairRDDFunctions.scala#L503-L505
+val createCombiner = (v: V) =&gt; CompactBuffer(v) val mergeValue = (buf: CompactBuffer[V], v: V) =&gt; buf &#43;= v val mergeCombiners = (c1: CompactBuffer[V], c2: CompactBuffer[V]) =&gt; c1 &#43;&#43;= c2 which eventually calls: PairRDDFunctions.combineByKeyWithClassTag
+val aggregator = new Aggregator[K, V, C]( self.context.clean(createCombiner), self.context.clean(mergeValue), self.context.clean(mergeCombiners)) which in turn, boils down to:
+new ShuffledRDD[K, V, C](self, partitioner) .setSerializer(serializer) .">
+
+
+<meta itemprop="datePublished" content="2019-05-24T23:45:10&#43;03:00" />
+<meta itemprop="dateModified" content="2019-05-24T23:45:10&#43;03:00" />
+<meta itemprop="wordCount" content="195">
+
+
+
+<meta itemprop="keywords" content="" />
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://amuraru.github.io"/>
+
+<meta name="twitter:title" content="Spark RDD Shuffle internals"/>
+<meta name="twitter:description" content="group-by is using an aggregator to combineValuesByKey At the DAG level configuration: See PairRDDFunctions.scala#L503-L505
+val createCombiner = (v: V) =&gt; CompactBuffer(v) val mergeValue = (buf: CompactBuffer[V], v: V) =&gt; buf &#43;= v val mergeCombiners = (c1: CompactBuffer[V], c2: CompactBuffer[V]) =&gt; c1 &#43;&#43;= c2 which eventually calls: PairRDDFunctions.combineByKeyWithClassTag
+val aggregator = new Aggregator[K, V, C]( self.context.clean(createCombiner), self.context.clean(mergeValue), self.context.clean(mergeCombiners)) which in turn, boils down to:
+new ShuffledRDD[K, V, C](self, partitioner) .setSerializer(serializer) ."/>
+
+
+
+
+<meta property="article:published_time" content="2019-05-24 23:45:10 &#43;0300 EEST" />
+
+
+
+
+
+
+
+    </head>
+
+    <body class="dark-theme">
+        <div class="container">
+            <header class="header">
+    <span class="header__inner">
+        <a href="https://amuraru.github.io/" style="text-decoration: none;">
+    <div class="logo">
+        
+            <span class="logo__mark">></span>
+            <span class="logo__text">$ cd /home/</span>
+            <span class="logo__cursor"></span>
+        
+    </div>
+</a>
+
+
+        <span class="header__right">
+            
+                <nav class="menu">
+    <ul class="menu__inner"><li><a href="https://amuraru.github.io/about">About</a></li><li><a href="https://amuraru.github.io/posts">Posts</a></li>
+    </ul>
+</nav>
+
+                <span class="menu-trigger">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M0 0h24v24H0z" fill="none"/>
+                        <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+                    </svg>
+                </span>
+            
+
+            <span class="theme-toggle"><svg class="theme-toggler" width="24" height="24" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M22 41C32.4934 41 41 32.4934 41 22C41 11.5066 32.4934 3 22
+  3C11.5066 3 3 11.5066 3 22C3 32.4934 11.5066 41 22 41ZM7 22C7
+  13.7157 13.7157 7 22 7V37C13.7157 37 7 30.2843 7 22Z"/>
+</svg>
+</span>
+        </span>
+    </span>
+</header>
+
+
+            <div class="content">
+                
+    <main class="post">
+
+        <div class="post-info">
+            <p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-clock"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>One minute
+
+            
+
+            </p>
+        </div>
+
+        <article>
+            <h1 class="post-title"><a href="https://amuraru.github.io/posts/2019/05/spark-rdd-shuffle-internals/">Spark RDD Shuffle internals</a></h1>
+
+            
+
+            <div class="post-content">
+                
+
+<h2 id="group-by-is-using-an-aggregator-to-combinevaluesbykey">group-by is using an aggregator to combineValuesByKey</h2>
+
+<h3 id="at-the-dag-level-configuration">At the DAG level configuration:</h3>
+
+<p>See <a href="https://github.com/apache/spark/blob/5fae8f7b1d26fca3cbf663e46ca0da6d76c690da/core/src/main/scala/org/apache/spark/rdd/PairRDDFunctions.scala#L503-L505" target="_blank">PairRDDFunctions.scala#L503-L505</a></p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java">    val createCombiner <span style="color:#f92672">=</span> <span style="color:#f92672">(</span>v: V<span style="color:#f92672">)</span> <span style="color:#f92672">=&gt;</span> CompactBuffer<span style="color:#f92672">(</span>v<span style="color:#f92672">)</span>
+    val mergeValue <span style="color:#f92672">=</span> <span style="color:#f92672">(</span>buf: CompactBuffer<span style="color:#f92672">[</span>V<span style="color:#f92672">],</span> v: V<span style="color:#f92672">)</span> <span style="color:#f92672">=&gt;</span> buf <span style="color:#f92672">+=</span> v
+    val mergeCombiners <span style="color:#f92672">=</span> <span style="color:#f92672">(</span>c1: CompactBuffer<span style="color:#f92672">[</span>V<span style="color:#f92672">],</span> c2: CompactBuffer<span style="color:#f92672">[</span>V<span style="color:#f92672">])</span> <span style="color:#f92672">=&gt;</span> c1 <span style="color:#f92672">++=</span> c2</code></pre></div>
+<p>which eventually calls:
+PairRDDFunctions.combineByKeyWithClassTag</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java">val aggregator <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> Aggregator<span style="color:#f92672">[</span>K<span style="color:#f92672">,</span> V<span style="color:#f92672">,</span> C<span style="color:#f92672">](</span>
+      self<span style="color:#f92672">.</span><span style="color:#a6e22e">context</span><span style="color:#f92672">.</span><span style="color:#a6e22e">clean</span><span style="color:#f92672">(</span>createCombiner<span style="color:#f92672">),</span>
+      self<span style="color:#f92672">.</span><span style="color:#a6e22e">context</span><span style="color:#f92672">.</span><span style="color:#a6e22e">clean</span><span style="color:#f92672">(</span>mergeValue<span style="color:#f92672">),</span>
+      self<span style="color:#f92672">.</span><span style="color:#a6e22e">context</span><span style="color:#f92672">.</span><span style="color:#a6e22e">clean</span><span style="color:#f92672">(</span>mergeCombiners<span style="color:#f92672">))</span></code></pre></div>
+<p>which in turn, boils down to:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">new</span> ShuffledRDD<span style="color:#f92672">[</span>K<span style="color:#f92672">,</span> V<span style="color:#f92672">,</span> C<span style="color:#f92672">](</span>self<span style="color:#f92672">,</span> partitioner<span style="color:#f92672">)</span>
+        <span style="color:#f92672">.</span><span style="color:#a6e22e">setSerializer</span><span style="color:#f92672">(</span>serializer<span style="color:#f92672">)</span>
+        <span style="color:#f92672">.</span><span style="color:#a6e22e">setAggregator</span><span style="color:#f92672">(</span>aggregator<span style="color:#f92672">)</span>
+        <span style="color:#f92672">.</span><span style="color:#a6e22e">setMapSideCombine</span><span style="color:#f92672">(</span>mapSideCombine<span style="color:#f92672">)</span></code></pre></div>
+<hr />
+
+<h4 id="reduce-side">Reduce side</h4>
+
+<p>On the reduce side, when the DAG is actually materialized:</p>
+
+<p><code>ShuffledRDD#compute</code> is the actual RDD implm for a shuffled RDD.</p>
+
+<p>This in turn uses <code>BlockStoreShuffleReader#read</code> which has the following important points:</p>
+
+<ol>
+<li>Read the shuffle blocks from mappers (network via Netty or local): <code>ShuffleBlockFetcherIterator</code></li>
+<li>Deserialize: <code>recordIter</code></li>
+
+<li><p>Aggregate the (K,V)s by key:  <code>aggregatedIter</code>  <code>aggregator#combineValuesByKey</code></p>
+
+<pre><code>val combiners = new ExternalAppendOnlyMap[K, V, C]
+(createCombiner, mergeValue, mergeCombiners)
+</code></pre>
+
+<p>ExternalAppendOnlyMap will accumulate in memory the (K,agg(V)) till spill limit is hit, then spills (keep a reference to an on-disk partial sorted iterator)</p></li>
+
+<li><p>The final <code>resultIter</code> is actually provided by <code>ExternalSorter</code> which wraps the <code>aggregatedIter</code> and does the final merge sort of partial sorted results. See <code>ExternalSorter#merge</code><br />
+For <code>groupBy</code> the <code>aggregator.isDefined=false</code>, only <code>ordering.isDefined=true</code></p></li>
+</ol>
+
+<h2 id="references">References:</h2>
+
+<p>[1] ExternalAppendOnlyMap:
+<a href="https://github.com/JerryLead/SparkInternals/blob/master/markdown/english/4-shuffleDetails.md#externalappendonlymap" target="_blank">https://github.com/JerryLead/SparkInternals/blob/master/markdown/english/4-shuffleDetails.md#externalappendonlymap</a></p>
+
+<h2 id="repartitionandsortwithpartition-is-ligher">repartitionAndSortWithPartition is ligher(?)</h2>
+
+            </div>
+        </article>
+
+        <hr />
+
+        <div class="post-info">
+
+            <p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>195 Words</p>
+
+            <p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>2019-05-24 23:45 &#43;0300</p>
+        </div>
+
+        
+
+        
+          <div id="comments" class="thin">
+    <div id="disqus_thread"></div>
+<script type="application/javascript">
+    var disqus_config = function () {
+    
+    
+    
+    };
+    (function() {
+        if (["localhost", "127.0.0.1"].indexOf(window.location.hostname) != -1) {
+            document.getElementById('disqus_thread').innerHTML = 'Disqus comments not available by default when the website is previewed locally.';
+            return;
+        }
+        var d = document, s = d.createElement('script'); s.async = true;
+        s.src = '//' + "amuraru-github-io" + '.disqus.com/embed.js';
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="https://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+</div>
+        
+    </main>
+
+            </div>
+
+            
+                <footer class="footer">
+    <div class="footer__inner">
+        <div class="footer__content">
+            <span>&copy; 2019</span>
+            
+                <span><a href="https://amuraru.github.io">amuraru</a></span>
+            
+            <span><a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0</a></span>
+            <span> <a href="https://amuraru.github.io/posts/index.xml" target="_blank" title="rss"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-rss"><path d="M4 11a9 9 0 0 1 9 9"></path><path d="M4 4a16 16 0 0 1 16 16"></path><circle cx="5" cy="19" r="1"></circle></svg></a></span>
+        </div>
+    </div>
+    <div class="footer__inner">
+        <div class="footer__content">
+
+        </div>
+    </div>
+    <div class="footer__inner">
+        <div class="footer__content">
+            <span>Powered by <a href="http://gohugo.io">Hugo</a></span>
+            <span>Made with &#10084; by <a href="https://github.com/rhazdon">rhazdon</a></span>
+        </div>
+    </div>
+</footer>
+
+            
+        </div>
+
+        
+
+
+
+
+<script type="text/javascript" src="https://amuraru.github.io/bundle.min.9e52e68b082cf2a30a7fead88260edb8818fbd7f7831e39674917d4539ec75df41ba88eaddfbd916594ab4fb2a31913b46cf2d6094cf80381edb8c632512a8ca.js" integrity="sha512-nlLmiwgs8qMKf&#43;rYgmDtuIGPvX94MeOWdJF9RTnsdd9Buojq3fvZFllKtPsqMZE7Rs8tYJTPgDge24xjJRKoyg=="></script>
+
+
+
+    </body>
+</html>

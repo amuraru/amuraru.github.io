@@ -5,50 +5,41 @@
         <description>Recent content in Posts on @amuraru</description>
         <generator>Hugo -- gohugo.io</generator>
         <language>en-us</language>
-        <copyright>amuraru</copyright>
+        <copyright>&lt;a href=&#34;https://creativecommons.org/licenses/by-nc/4.0/&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;CC BY-NC 4.0&lt;/a&gt;</copyright>
         <lastBuildDate>Fri, 24 May 2019 23:45:10 +0300</lastBuildDate>
         <atom:link href="https://amuraru.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
         
         <item>
             <title>Spark RDD Shuffle internals</title>
-            <link>https://amuraru.github.io/posts/spark-shuffle-internals/</link>
+            <link>https://amuraru.github.io/posts/2019/05/spark-rdd-shuffle-internals/</link>
             <pubDate>Fri, 24 May 2019 23:45:10 +0300</pubDate>
             
-            <guid>https://amuraru.github.io/posts/spark-shuffle-internals/</guid>
+            <guid>https://amuraru.github.io/posts/2019/05/spark-rdd-shuffle-internals/</guid>
             <description>group-by is using an aggregator to combineValuesByKey At the DAG level configuration: See PairRDDFunctions.scala#L503-L505
-val createCombiner = (v: V) =&amp;gt; CompactBuffer(v) val mergeValue = (buf: CompactBuffer[V], v: V) =&amp;gt; buf += v val mergeCombiners = (c1: CompactBuffer[V], c2: CompactBuffer[V]) =&amp;gt; c1 ++= c2  which eventually calls: PairRDDFunctions.combineByKeyWithClassTag
-val aggregator = new Aggregator[K, V, C]( self.context.clean(createCombiner), self.context.clean(mergeValue), self.context.clean(mergeCombiners))  which in turn, boils down to:
-new ShuffledRDD[K, V, C](self, partitioner) .</description>
+val createCombiner = (v: V) =&amp;gt; CompactBuffer(v) val mergeValue = (buf: CompactBuffer[V], v: V) =&amp;gt; buf += v val mergeCombiners = (c1: CompactBuffer[V], c2: CompactBuffer[V]) =&amp;gt; c1 ++= c2 which eventually calls: PairRDDFunctions.combineByKeyWithClassTag
+val aggregator = new Aggregator[K, V, C]( self.context.clean(createCombiner), self.context.clean(mergeValue), self.context.clean(mergeCombiners)) which in turn, boils down to:
+new ShuffledRDD[K, V, C](self, partitioner) .setSerializer(serializer) .</description>
             <content type="html"><![CDATA[
 
 <h2 id="group-by-is-using-an-aggregator-to-combinevaluesbykey">group-by is using an aggregator to combineValuesByKey</h2>
 
 <h3 id="at-the-dag-level-configuration">At the DAG level configuration:</h3>
 
-<p>See <a href="https://github.com/apache/spark/blob/5fae8f7b1d26fca3cbf663e46ca0da6d76c690da/core/src/main/scala/org/apache/spark/rdd/PairRDDFunctions.scala#L503-L505">PairRDDFunctions.scala#L503-L505</a></p>
-
-<pre><code class="language-java">    val createCombiner = (v: V) =&gt; CompactBuffer(v)
-    val mergeValue = (buf: CompactBuffer[V], v: V) =&gt; buf += v
-    val mergeCombiners = (c1: CompactBuffer[V], c2: CompactBuffer[V]) =&gt; c1 ++= c2
-</code></pre>
-
+<p>See <a href="https://github.com/apache/spark/blob/5fae8f7b1d26fca3cbf663e46ca0da6d76c690da/core/src/main/scala/org/apache/spark/rdd/PairRDDFunctions.scala#L503-L505" target="_blank">PairRDDFunctions.scala#L503-L505</a></p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java">    val createCombiner <span style="color:#f92672">=</span> <span style="color:#f92672">(</span>v: V<span style="color:#f92672">)</span> <span style="color:#f92672">=&gt;</span> CompactBuffer<span style="color:#f92672">(</span>v<span style="color:#f92672">)</span>
+    val mergeValue <span style="color:#f92672">=</span> <span style="color:#f92672">(</span>buf: CompactBuffer<span style="color:#f92672">[</span>V<span style="color:#f92672">],</span> v: V<span style="color:#f92672">)</span> <span style="color:#f92672">=&gt;</span> buf <span style="color:#f92672">+=</span> v
+    val mergeCombiners <span style="color:#f92672">=</span> <span style="color:#f92672">(</span>c1: CompactBuffer<span style="color:#f92672">[</span>V<span style="color:#f92672">],</span> c2: CompactBuffer<span style="color:#f92672">[</span>V<span style="color:#f92672">])</span> <span style="color:#f92672">=&gt;</span> c1 <span style="color:#f92672">++=</span> c2</code></pre></div>
 <p>which eventually calls:
 PairRDDFunctions.combineByKeyWithClassTag</p>
-
-<pre><code class="language-java">val aggregator = new Aggregator[K, V, C](
-      self.context.clean(createCombiner),
-      self.context.clean(mergeValue),
-      self.context.clean(mergeCombiners))
-</code></pre>
-
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java">val aggregator <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> Aggregator<span style="color:#f92672">[</span>K<span style="color:#f92672">,</span> V<span style="color:#f92672">,</span> C<span style="color:#f92672">](</span>
+      self<span style="color:#f92672">.</span><span style="color:#a6e22e">context</span><span style="color:#f92672">.</span><span style="color:#a6e22e">clean</span><span style="color:#f92672">(</span>createCombiner<span style="color:#f92672">),</span>
+      self<span style="color:#f92672">.</span><span style="color:#a6e22e">context</span><span style="color:#f92672">.</span><span style="color:#a6e22e">clean</span><span style="color:#f92672">(</span>mergeValue<span style="color:#f92672">),</span>
+      self<span style="color:#f92672">.</span><span style="color:#a6e22e">context</span><span style="color:#f92672">.</span><span style="color:#a6e22e">clean</span><span style="color:#f92672">(</span>mergeCombiners<span style="color:#f92672">))</span></code></pre></div>
 <p>which in turn, boils down to:</p>
-
-<pre><code class="language-java">new ShuffledRDD[K, V, C](self, partitioner)
-        .setSerializer(serializer)
-        .setAggregator(aggregator)
-        .setMapSideCombine(mapSideCombine)
-</code></pre>
-
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">new</span> ShuffledRDD<span style="color:#f92672">[</span>K<span style="color:#f92672">,</span> V<span style="color:#f92672">,</span> C<span style="color:#f92672">](</span>self<span style="color:#f92672">,</span> partitioner<span style="color:#f92672">)</span>
+        <span style="color:#f92672">.</span><span style="color:#a6e22e">setSerializer</span><span style="color:#f92672">(</span>serializer<span style="color:#f92672">)</span>
+        <span style="color:#f92672">.</span><span style="color:#a6e22e">setAggregator</span><span style="color:#f92672">(</span>aggregator<span style="color:#f92672">)</span>
+        <span style="color:#f92672">.</span><span style="color:#a6e22e">setMapSideCombine</span><span style="color:#f92672">(</span>mapSideCombine<span style="color:#f92672">)</span></code></pre></div>
 <hr />
 
 <h4 id="reduce-side">Reduce side</h4>
@@ -78,7 +69,7 @@ For <code>groupBy</code> the <code>aggregator.isDefined=false</code>, only <code
 <h2 id="references">References:</h2>
 
 <p>[1] ExternalAppendOnlyMap:
-<a href="https://github.com/JerryLead/SparkInternals/blob/master/markdown/english/4-shuffleDetails.md#externalappendonlymap">https://github.com/JerryLead/SparkInternals/blob/master/markdown/english/4-shuffleDetails.md#externalappendonlymap</a></p>
+<a href="https://github.com/JerryLead/SparkInternals/blob/master/markdown/english/4-shuffleDetails.md#externalappendonlymap" target="_blank">https://github.com/JerryLead/SparkInternals/blob/master/markdown/english/4-shuffleDetails.md#externalappendonlymap</a></p>
 
 <h2 id="repartitionandsortwithpartition-is-ligher">repartitionAndSortWithPartition is ligher(?)</h2>
 ]]></content>

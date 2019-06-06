@@ -2,14 +2,17 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>@amuraru</title>
-    <link>https://amuraru.github.io/</link>
+    <link>https://amuraru.github.io/index.html</link>
     <description>Recent content on @amuraru</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <copyright>amuraru</copyright>
-    <lastBuildDate>Sat, 25 May 2019 00:15:06 +0300</lastBuildDate>
+    <copyright>&lt;a href=&#34;https://creativecommons.org/licenses/by-nc/4.0/&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;CC BY-NC 4.0&lt;/a&gt;</copyright>
     
 	<atom:link href="https://amuraru.github.io/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+  </channel>
+</rss>pe="application/rss+xml" />
     
     
     <item>
@@ -18,19 +21,20 @@
       <pubDate>Sat, 25 May 2019 00:15:06 +0300</pubDate>
       
       <guid>https://amuraru.github.io/about/</guid>
-      <description></description>
+      <description>Adrian Muraru @adobe
+Open Source enthusiast</description>
     </item>
     
     <item>
       <title>Spark RDD Shuffle internals</title>
-      <link>https://amuraru.github.io/posts/spark-shuffle-internals/</link>
+      <link>https://amuraru.github.io/posts/2019/05/spark-rdd-shuffle-internals/</link>
       <pubDate>Fri, 24 May 2019 23:45:10 +0300</pubDate>
       
-      <guid>https://amuraru.github.io/posts/spark-shuffle-internals/</guid>
+      <guid>https://amuraru.github.io/posts/2019/05/spark-rdd-shuffle-internals/</guid>
       <description>group-by is using an aggregator to combineValuesByKey At the DAG level configuration: See PairRDDFunctions.scala#L503-L505
-val createCombiner = (v: V) =&amp;gt; CompactBuffer(v) val mergeValue = (buf: CompactBuffer[V], v: V) =&amp;gt; buf += v val mergeCombiners = (c1: CompactBuffer[V], c2: CompactBuffer[V]) =&amp;gt; c1 ++= c2  which eventually calls: PairRDDFunctions.combineByKeyWithClassTag
-val aggregator = new Aggregator[K, V, C]( self.context.clean(createCombiner), self.context.clean(mergeValue), self.context.clean(mergeCombiners))  which in turn, boils down to:
-new ShuffledRDD[K, V, C](self, partitioner) .</description>
+val createCombiner = (v: V) =&amp;gt; CompactBuffer(v) val mergeValue = (buf: CompactBuffer[V], v: V) =&amp;gt; buf += v val mergeCombiners = (c1: CompactBuffer[V], c2: CompactBuffer[V]) =&amp;gt; c1 ++= c2 which eventually calls: PairRDDFunctions.combineByKeyWithClassTag
+val aggregator = new Aggregator[K, V, C]( self.context.clean(createCombiner), self.context.clean(mergeValue), self.context.clean(mergeCombiners)) which in turn, boils down to:
+new ShuffledRDD[K, V, C](self, partitioner) .setSerializer(serializer) .</description>
     </item>
     
   </channel>
